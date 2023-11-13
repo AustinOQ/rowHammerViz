@@ -1,8 +1,10 @@
+'''Written by Austin O'Quinn'''
 import tkinter as tk
+from tkinter import filedialog
 import random
 
 class RAM:
-    def __init__(self, master, rows, cols, update_frequency, flip_probability):
+    def __init__(self, master, rows, cols, update_frequency, flip_probability, init_file=None):
         self.master = master
         self.rows = rows
         self.cols = cols
@@ -11,14 +13,19 @@ class RAM:
         self.view_mode = tk.StringVar(value="binary")
 
         # Initialize the data and charges
-        self.data = [[random.choice([0, 1]) for _ in range(self.cols)] for _ in range(self.rows)]
+        if init_file:
+            with open(init_file, 'r') as file:
+                self.data = [list(map(int, list(line.strip()))) for line in file.readlines() if line.strip()]
+        else:
+            self.data = [[random.choice([0, 1]) for _ in range(self.cols)] for _ in range(self.rows)]
+
         self.charges = [[5 if bit == 1 else 0 for bit in row] for row in self.data]
 
         self.cells = []
         self.input_frames = []
         self.entry_widgets = []
 
-        # Toggle button to switch view between binary and voltage
+        # Toggle to switch view between binary and voltage
         self.toggle_button = tk.Button(self.master, text="Switch to Voltages", command=self.toggle_view)
         self.toggle_button.pack(side=tk.TOP, pady=10)
 
@@ -92,21 +99,6 @@ class RAM:
             self.data[row_index][col_index] = bit
             self.charges[row_index][col_index] = 5 if bit == 1 else 0
 
-        # Adjust the voltage of adjacent cells based on the new values.
-        for col_index, bit in enumerate(binary_string):
-            bit = int(bit)
-            voltage_change = 1 if bit == 1 else -1
-
-            # Apply voltage changes to adjacent cells in other rows
-            adjacent_cells = [(row_index-1, col_index), (row_index+1, col_index)]
-            for adj_row, adj_col in adjacent_cells:
-                if 0 <= adj_row < self.rows:
-                    self.charges[adj_row][adj_col] = max(0, min(5, self.charges[adj_row][adj_col] + voltage_change))
-                    if self.charges[adj_row][adj_col] == 2.5:
-                        self.data[adj_row][adj_col] = random.choice([0, 1])
-                    else:
-                        self.data[adj_row][adj_col] = 1 if self.charges[adj_row][adj_col] > 2.5 else 0
-
         self.redraw()
 
         # After updating and redrawing, set the current data as the new default value in the entry
@@ -131,26 +123,27 @@ class RAM:
                 current_bit = 1 if self.charges[i][j] > 2.5 else 0
                 self.charges[i][j] = 5 if current_bit == 1 else 0
 
-        # Redraw the grid to reflect the changes
         self.redraw()
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("RAM Simulator")
 
-    # Set your desired 'update_frequency' for the voltage reset in milliseconds.
-    # For example, 2000 milliseconds (or 2 seconds) would be:
-    ram = RAM(root, 10, 8, 2000, 0.1)
+    #input ram freq in ms between refresh
+    update_frequency = int(input("Enter RAM refresh frequency in milliseconds: "))
+    
+    # Ask the user if they want to initialize rows from a file
+    init_from_file = input("Do you want to initialize rows from a file? (y/n): ")
+    init_file = None
+    if init_from_file.lower() == 'y':
+        root.withdraw() # Hide the main window while the file dialog is open
+        init_file = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+        root.deiconify() # Show the main window again
+    
+    # Initialize RAM with the user-provided file or randomly
+    ram = RAM(root, 10, 8, update_frequency, 0.1, init_file=init_file)
 
     # Start the voltage resetting loop
     ram.start_voltage_reset_loop()
 
     root.mainloop()
-
-#Take file as input
-
-#color code based on the app that owns each row
-
-#let user input 0 and 1 voltages and change per flip
-
-#let user input update frequency.
